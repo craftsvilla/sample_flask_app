@@ -45,7 +45,7 @@ class SubApp1Service:
                 names = SubApp1Service.db_connection.query_db(query)
                 for i in names:
                     if name == i.get("name"):
-                        return "This name already taken"
+                        return "This name already taken . "
 
                 query = "insert into users(id, name) values(%s,%s)"
                 values = (id,name)
