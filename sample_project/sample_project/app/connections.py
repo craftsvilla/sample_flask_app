@@ -1,0 +1,81 @@
+from decimal import Decimal
+from datetime import datetime
+import mysql
+import pymysql
+
+
+class SqlConnection(object):
+    def __init__(self, db_config):
+        self.db_config = db_config
+        self.connection = None
+        self.cursor = None
+        try:
+            self.connection = pymysql.connect(**self.db_config)
+            self.cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+        except pymysql.MySQLError as e:
+            print(f"Error connecting to MySQL: {e}")
+            self.close_connection()
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            self.close_connection()
+
+    @staticmethod
+    def parsed_db_result(db_data) -> dict:
+        parsed_db_data = dict()
+        for key, val in db_data.items():
+            if isinstance(val, Decimal):
+                parsed_db_data.update({key: float(val)})
+            elif isinstance(val, datetime):
+                parsed_db_data.update({key: val.strftime('%Y-%m-%d %H:%M:%S')})
+            elif isinstance(val, str) and val == 'NULL':
+                parsed_db_data.update({key: None})
+            else:
+                parsed_db_data.update({key: val})
+        return parsed_db_data
+
+    def reconnect_db(self):
+        self.connection = pymysql.connect(**self.db_config)
+        self.cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+
+    def query_db(self, query, params=None) -> list:
+        try:
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+        except Exception as e:
+            self.reconnect_db()
+            self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        return list(map(lambda row: self.parsed_db_result(row), result)) if result else list()
+
+    def query_db_one(self, query, params=None, parsed=True) -> dict:
+        try:
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+        except Exception as e:
+            self.reconnect_db()
+            self.cursor.execute(query)
+        result = self.cursor.fetchone()
+        if not result:
+            return dict()
+        return self.parsed_db_result(result) if parsed else result
+
+    def write_db(self, query, params=None) -> int:
+        try:
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+            self.connection.commit()
+        except Exception as e:
+            self.reconnect_db()
+            self.cursor.execute(query)
+            self.connection.commit()
+        return self.cursor.lastrowid
+
+    def __del__(self):
+        self.cursor.close()
+        self.connection.close()
