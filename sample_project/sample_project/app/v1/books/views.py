@@ -11,7 +11,7 @@ from app.connections import SqlConnection
 
 class GetBookDetails(MethodView):
     @validate_request
-    def get(self, params, headers, id,*args, **kwargs):
+    def get(self, params, headers, id=None,*args, **kwargs):
         if not id:
             response = SubApp1Service(params, headers)
             data = response.get_books()

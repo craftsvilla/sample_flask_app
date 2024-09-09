@@ -35,7 +35,7 @@ class SqlConnection(object):
 
     def reconnect_db(self):
         self.connection = pymysql.connect(**self.db_config)
-        self.cursor = self.connection.cursor(dictionary=True)
+        self.cursor = self.connection.cursor(pymysql.cursors.DictCursor)
 
     def query_db(self, query, params=None) -> list:
         try:
